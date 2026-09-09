@@ -1,0 +1,13 @@
+{
+  "appId": "com.kalkulator.sederhana",
+  "appName": "Kalkulator",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#0f0f1a"
+  }
+}

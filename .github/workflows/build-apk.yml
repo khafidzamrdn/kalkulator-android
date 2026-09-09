@@ -1,0 +1,105 @@
+name: Build APK Android
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Jenis build'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      
+      - name: Install dependencies
+        run: |
+          npm install
+          npm install @capacitor/android@latest
+      
+      - name: Initialize Capacitor
+        run: |
+          npx cap init "Kalkulator" "com.kalkulator.sederhana" --web-dir=www
+      
+      - name: Add Android platform
+        run: |
+          npx cap add android
+      
+      - name: Sync Capacitor
+        run: |
+          npx cap sync android
+      
+      - name: Update AndroidManifest.xml
+        run: |
+          # Pastikan izin internet ada (walaupun tidak diperlukan untuk fitur utama)
+          if ! grep -q "android.permission.INTERNET" android/app/src/main/AndroidManifest.xml; then
+            sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <application/' android/app/src/main/AndroidManifest.xml
+          fi
+      
+      - name: Build Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      
+      - name: Build Release APK (unsigned)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+        continue-on-error: true
+      
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+      
+      - name: Upload Release APK (unsigned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-unsigned
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 30
+        continue-on-error: true
+      
+      - name: Upload APK info
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-info
+          path: |
+            android/app/build/outputs/apk/
+            android/app/build/outputs/logs/
+          retention-days: 7
